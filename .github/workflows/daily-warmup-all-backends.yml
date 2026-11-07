@@ -1,0 +1,135 @@
+
+name: Daily Warm Up All Backends
+
+on:
+  schedule:
+    # Daily at 6:00 AM IST (00:30 UTC)
+    - cron: "30 0 * * *"
+
+  workflow_dispatch:
+
+jobs:
+  warmup:
+    name: Warm Up All Render Backend Services
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Wake All Services
+        shell: bash
+        run: |
+          echo "================================================"
+          echo "RENDER BACKEND WAKE-UP SEQUENCE"
+          echo "================================================"
+
+          echo "SYSTEM STATUS: COLD / STARTING UP"
+          echo "SCHEDULE: Daily at 6:00 AM IST"
+          echo ""
+
+          # ----------------------------------------------
+          # START ALL FIVE SERVICES SIMULTANEOUSLY
+          # ----------------------------------------------
+
+          echo "Starting all backend services..."
+
+          curl --fail --silent --show-error --location --max-time 900 \
+            https://backend-auth-service-ks6f.onrender.com \
+            > /dev/null 2>&1 &
+          PID1=$!
+
+          curl --fail --silent --show-error --location --max-time 900 \
+            https://backend-product-service-ncl2.onrender.com \
+            > /dev/null 2>&1 &
+          PID2=$!
+
+          curl --fail --silent --show-error --location --max-time 900 \
+            https://backend-cart-order-service-q6qh.onrender.com \
+            > /dev/null 2>&1 &
+          PID3=$!
+
+          curl --fail --silent --show-error --location --max-time 900 \
+            https://backend-ml-events-service-ba9v.onrender.com \
+            > /dev/null 2>&1 &
+          PID4=$!
+
+          curl --fail --silent --show-error --location --max-time 900 \
+            https://backend-ml-recommendation-service-huu6.onrender.com \
+            > /dev/null 2>&1 &
+          PID5=$!
+
+          # ----------------------------------------------
+          # WAIT FOR ALL SERVICES
+          # ----------------------------------------------
+
+          echo ""
+          echo "SERVICES ARE WAKING UP..."
+          echo "Waiting for all backend responses..."
+          echo ""
+
+          SUCCESS=0
+          FAILED=0
+
+          if wait "$PID1"; then
+            echo "AUTH SERVICE: UP"
+            SUCCESS=$((SUCCESS + 1))
+          else
+            echo "AUTH SERVICE: FAILED"
+            FAILED=$((FAILED + 1))
+          fi
+
+          if wait "$PID2"; then
+            echo "PRODUCT SERVICE: UP"
+            SUCCESS=$((SUCCESS + 1))
+          else
+            echo "PRODUCT SERVICE: FAILED"
+            FAILED=$((FAILED + 1))
+          fi
+
+          if wait "$PID3"; then
+            echo "CART / ORDER SERVICE: UP"
+            SUCCESS=$((SUCCESS + 1))
+          else
+            echo "CART / ORDER SERVICE: FAILED"
+            FAILED=$((FAILED + 1))
+          fi
+
+          if wait "$PID4"; then
+            echo "ML EVENTS SERVICE: UP"
+            SUCCESS=$((SUCCESS + 1))
+          else
+            echo "ML EVENTS SERVICE: FAILED"
+            FAILED=$((FAILED + 1))
+          fi
+
+          if wait "$PID5"; then
+            echo "ML RECOMMENDATION SERVICE: UP"
+            SUCCESS=$((SUCCESS + 1))
+          else
+            echo "ML RECOMMENDATION SERVICE: FAILED"
+            FAILED=$((FAILED + 1))
+          fi
+
+          # ----------------------------------------------
+          # FINAL SYSTEM STATUS
+          # ----------------------------------------------
+
+          echo ""
+          echo "================================================"
+          echo "FINAL BACKEND STATUS"
+          echo "================================================"
+
+          echo "SERVICES UP: $SUCCESS / 5"
+          echo "SERVICES FAILED: $FAILED / 5"
+
+          if [ "$FAILED" -eq 0 ]; then
+            echo ""
+            echo "SYSTEM STATUS: ONLINE"
+            echo "ALL BACKEND SERVICES ARE UP AND RUNNING"
+            echo "READY TO ACCEPT TRAFFIC"
+          else
+            echo ""
+            echo "SYSTEM STATUS: PARTIALLY ONLINE"
+            echo "SOME BACKEND SERVICES FAILED"
+            exit 1
+          fi
+
+          echo "================================================"
