@@ -23,7 +23,7 @@ export class AssistantService {
   // PRODUCTION BACKEND
   // ============================================
   private BASE_URL =
-    'https://assistant-service-production-4c1b.up.railway.app/api/v1/assistant';
+    'https://assistant-service-g24j.onrender.com/api/v1/assistant';
 
   constructor(private http: HttpClient) {}
 
