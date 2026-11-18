@@ -17,13 +17,12 @@ export class AssistantService {
   // ============================================
   // LOCAL BACKEND
   // ============================================
-  // private BASE_URL = 'http://127.0.0.1:5000/api/v1/assistant';
+  // private BASE_URL = 'http://127.0.0.1:5000/api/v1/assistant'; 
 
   // ============================================
   // PRODUCTION BACKEND
   // ============================================
-  private BASE_URL =
-    'https://assistant-service-g24j.onrender.com/api/v1/assistant';
+  private BASE_URL = 'https://assistant-service-g24j.onrender.com/api/v1/assistant';
 
   constructor(private http: HttpClient) {}
 
