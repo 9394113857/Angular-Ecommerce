@@ -1,50 +1,125 @@
-<!-- Floating Button -->
-<div class="chat-button" (click)="toggleChat()">
-  💬
-</div>
+<!-- Floating assistant launcher -->
+<button
+  class="chat-launcher"
+  type="button"
+  (click)="toggleChat()"
+  [attr.aria-expanded]="isOpen"
+  aria-label="Open shopping assistant">
+  <span class="launcher-symbol" aria-hidden="true">✦</span>
+  <span class="launcher-copy">
+    <strong>Need a hand?</strong>
+    <small>Chat with us</small>
+  </span>
+  <span class="launcher-status" aria-hidden="true"></span>
+</button>
 
-<!-- Chat Window -->
-<div class="chat-window" *ngIf="isOpen">
+<!-- Shopping assistant panel -->
+<section
+  class="chat-window"
+  *ngIf="isOpen"
+  role="dialog"
+  aria-label="Shopping assistant">
 
-  <!-- Header -->
-  <div class="chat-header">
-    AI Assistant
-    <span class="close-btn" (click)="toggleChat()">✖</span>
-  </div>
-
-  <!-- Messages -->
-  <div class="chat-body">
-
-    <div *ngFor="let msg of messages"
-         [ngClass]="{
-           'user-msg': msg.role === 'user',
-           'assistant-msg': msg.role === 'assistant'
-         }">
-
-      {{ msg.text }}
-
+  <header class="chat-header">
+    <div class="assistant-brand">
+      <div class="assistant-avatar" aria-hidden="true">✦</div>
+      <div class="assistant-heading">
+        <h2>Shopping Assistant</h2>
+        <p><span class="online-indicator"></span> Online · Ready to help</p>
+      </div>
     </div>
 
-    <div *ngIf="loading" class="assistant-msg">
-      Typing...
-    </div>
-
-  </div>
-
-  <!-- Input -->
-  <div class="chat-input">
-
-    <input
-      type="text"
-      [(ngModel)]="inputMessage"
-      placeholder="Ask something..."
-      (keyup.enter)="sendMessage()"
-    />
-
-    <button (click)="sendMessage()">
-      Send
+    <button
+      class="close-button"
+      type="button"
+      (click)="toggleChat()"
+      aria-label="Close chat">
+      <span aria-hidden="true">×</span>
     </button>
+  </header>
 
+  <div class="chat-body">
+    <div class="welcome-panel" *ngIf="messages.length === 0">
+      <div class="welcome-icon" aria-hidden="true">✦</div>
+      <p class="welcome-eyebrow">YOUR PERSONAL SHOPPING ASSISTANT</p>
+      <h3>What can I help you find?</h3>
+      <p class="welcome-description">
+        Ask me about products, categories or affordable picks. I’m here to make shopping easier.
+      </p>
+
+      <div class="suggestion-list">
+        <button type="button" (click)="sendSuggestion('Show me all products')">
+          <span>Browse all products</span><span aria-hidden="true">↗</span>
+        </button>
+        <button type="button" (click)="sendSuggestion('Show me laptops')">
+          <span>Explore laptops</span><span aria-hidden="true">↗</span>
+        </button>
+        <button type="button" (click)="sendSuggestion('Find cheap products')">
+          <span>Find affordable products</span><span aria-hidden="true">↗</span>
+        </button>
+      </div>
+    </div>
+
+    <div
+      class="message-row"
+      *ngFor="let msg of messages"
+      [ngClass]="msg.role === 'user' ? 'user-row' : 'assistant-row'">
+
+      <div class="message-avatar" *ngIf="msg.role === 'assistant'" aria-hidden="true">✦</div>
+
+      <div class="message-content">
+        <div class="message-bubble" [ngClass]="msg.role === 'user' ? 'user-bubble' : 'assistant-bubble'">
+          <p class="message-text" *ngIf="!msg.products?.length">{{ msg.text }}</p>
+
+          <ng-container *ngIf="msg.products?.length">
+            <p class="message-text product-intro">{{ msg.text }}</p>
+
+            <div class="product-list">
+              <article class="product-card" *ngFor="let product of msg.products">
+                <div class="product-card-main">
+                  <h4>{{ product.name }}</h4>
+                  <span class="product-price">{{ formatPrice(product.price) }}</span>
+                </div>
+                <span class="product-category" *ngIf="product.category">
+                  {{ product.category }}
+                </span>
+              </article>
+            </div>
+          </ng-container>
+        </div>
+
+        <time class="message-time">{{ msg.timestamp | date:'shortTime' }}</time>
+      </div>
+    </div>
+
+    <div class="message-row assistant-row" *ngIf="loading">
+      <div class="message-avatar" aria-hidden="true">✦</div>
+      <div class="typing-indicator" aria-label="Assistant is typing">
+        <span></span><span></span><span></span>
+      </div>
+    </div>
   </div>
 
-</div>
+  <footer class="chat-footer">
+    <div class="chat-composer">
+      <input
+        type="text"
+        [(ngModel)]="inputMessage"
+        maxlength="500"
+        autocomplete="off"
+        aria-label="Message the shopping assistant"
+        placeholder="Ask about products..."
+        (keyup.enter)="sendMessage()" />
+
+      <button
+        class="send-button"
+        type="button"
+        (click)="sendMessage()"
+        [disabled]="loading || !inputMessage.trim()"
+        aria-label="Send message">
+        <span aria-hidden="true">↑</span>
+      </button>
+    </div>
+    <p class="chat-footnote">AI-powered shopping help · Responses may occasionally be inaccurate</p>
+  </footer>
+</section>
