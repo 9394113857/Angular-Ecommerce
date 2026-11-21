@@ -555,3 +555,56 @@
     animation: none;
   }
 }
+
+
+.related-products {
+  width: 100%;
+  margin-top: 10px;
+  border-top: 1px solid #edf0f6;
+  padding-top: 8px;
+}
+
+.related-toggle {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 5px 1px;
+  color: #68728a;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 10px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.related-toggle-action {
+  flex: 0 0 auto;
+  color: var(--assistant-accent);
+  font-weight: 700;
+}
+
+.related-list {
+  display: grid;
+  gap: 7px;
+  margin-top: 7px;
+  animation: related-enter 160ms ease-out;
+}
+
+.related-card {
+  background: #f8f9ff;
+  border-color: #e9e8fb;
+}
+
+@keyframes related-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
