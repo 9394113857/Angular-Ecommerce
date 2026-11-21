@@ -100,7 +100,7 @@ export class ChatWidgetComponent {
 
     const markdown = this.messages
       .map((message) => this.messageToMarkdown(message))
-      .join("\\n\\n---\\n\\n");
+      .join("\n\n---\n\n");
 
     const copied = await this.writeToClipboard(markdown);
     if (copied) {
@@ -138,7 +138,7 @@ export class ChatWidgetComponent {
       }
     }
 
-    return lines.join("\\n");
+    return lines.join("\n");
   }
 
   private async writeToClipboard(value: string): Promise<boolean> {
