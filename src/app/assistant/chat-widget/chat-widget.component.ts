@@ -76,7 +76,13 @@ export class ChatWidgetComponent {
   }
 
   formatPrice(price: string): string {
-    const amount = Number(String(price).replace(/[^\d.-]/g, ''));
+    const normalizedPrice = String(price).replace(/[^\d.-]/g, '');
+
+    if (!normalizedPrice) {
+      return price;
+    }
+
+    const amount = Number(normalizedPrice);
 
     if (!Number.isFinite(amount)) {
       return price;
@@ -88,7 +94,6 @@ export class ChatWidgetComponent {
       maximumFractionDigits: Number.isInteger(amount) ? 0 : 2
     }).format(amount);
   }
-
   private createAssistantMessage(response: string): Message {
     const products: ProductCard[] = (response || '')
       .split(/\r?\n/)
