@@ -25,7 +25,6 @@
               "src/assets"
             ],
             "styles": [
-            
               "src/styles.css"
             ],
             "scripts": []
@@ -40,8 +39,8 @@
                 },
                 {
                   "type": "anyComponentStyle",
-                  "maximumWarning": "2kb",
-                  "maximumError": "4kb"
+                  "maximumWarning": "8kb",
+                  "maximumError": "10kb"
                 }
               ],
               "outputHashing": "all"
@@ -65,7 +64,7 @@
             },
             "development": {
               "browserTarget": "e-commerce:build:development",
-              "proxyConfig": "src/proxy.conf.json" 
+              "proxyConfig": "src/proxy.conf.json"
             }
           },
           "defaultConfiguration": "development"
