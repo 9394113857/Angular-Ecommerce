@@ -12,6 +12,8 @@ interface Message {
   text: string;
   timestamp: Date;
   products?: ProductCard[];
+  relatedProducts?: ProductCard[];
+  relatedExpanded?: boolean;
 }
 
 @Component({
@@ -94,8 +96,8 @@ export class ChatWidgetComponent {
       maximumFractionDigits: Number.isInteger(amount) ? 0 : 2
     }).format(amount);
   }
-  private createAssistantMessage(response: string): Message {
-    const products: ProductCard[] = (response || '')
+  private parseProducts(response: string): ProductCard[] {
+    return (response || '')
       .split(/\r?\n/)
       .map((line): ProductCard | null => {
         const match = line.match(
@@ -113,19 +115,34 @@ export class ChatWidgetComponent {
         };
       })
       .filter((product): product is ProductCard => product !== null);
+  }
+
+  toggleRelatedProducts(message: Message): void {
+    message.relatedExpanded = !message.relatedExpanded;
+  }
+
+  private createAssistantMessage(response: string): Message {
+    const marker = '__RELATED_PRODUCTS__';
+    const sections = (response || '').split(marker);
+    const mainResponse = sections[0].trim();
+    const relatedResponse = sections[1] || '';
+    const products = this.parseProducts(mainResponse);
+    const relatedProducts = this.parseProducts(relatedResponse);
 
     if (products.length > 0) {
       return {
         role: 'assistant',
         text: 'Here are the products I found for you.',
         timestamp: new Date(),
-        products
+        products,
+        relatedProducts,
+        relatedExpanded: false
       };
     }
 
     return {
       role: 'assistant',
-      text: response || 'I couldn’t find a response. Please try again.',
+      text: mainResponse || 'I couldn’t find a response. Please try again.',
       timestamp: new Date()
     };
   }
