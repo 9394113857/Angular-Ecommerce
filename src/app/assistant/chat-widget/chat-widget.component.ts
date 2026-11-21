@@ -26,6 +26,8 @@ export class ChatWidgetComponent {
   inputMessage = '';
   messages: Message[] = [];
   loading = false;
+  copiedMessageIndex: number | null = null;
+  chatCopied = false;
 
   constructor(private assistantService: AssistantService) {}
 
@@ -75,6 +77,89 @@ export class ChatWidgetComponent {
         this.loading = false;
       }
     });
+  }
+
+  async copyMessage(message: Message, index: number): Promise<void> {
+    const markdown = this.messageToMarkdown(message);
+    const copied = await this.writeToClipboard(markdown);
+
+    if (copied) {
+      this.copiedMessageIndex = index;
+      window.setTimeout(() => {
+        if (this.copiedMessageIndex === index) {
+          this.copiedMessageIndex = null;
+        }
+      }, 1800);
+    }
+  }
+
+  async copyConversation(): Promise<void> {
+    if (!this.messages.length) {
+      return;
+    }
+
+    const markdown = this.messages
+      .map((message) => this.messageToMarkdown(message))
+      .join("\\n\\n---\\n\\n");
+
+    const copied = await this.writeToClipboard(markdown);
+    if (copied) {
+      this.chatCopied = true;
+      window.setTimeout(() => (this.chatCopied = false), 1800);
+    }
+  }
+
+  private messageToMarkdown(message: Message): string {
+    const heading = message.role === 'user' ? 'You' : 'Shopping Assistant';
+    const timestamp = message.timestamp instanceof Date
+      ? message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      : '';
+
+    const lines = [`**${heading}**${timestamp ? ` · ${timestamp}` : ''}`];
+
+    if (message.text) {
+      lines.push(message.text.trim());
+    }
+
+    if (message.products?.length) {
+      for (const product of message.products) {
+        lines.push(
+          `- **${product.name}** — ${this.formatPrice(product.price)}${product.category ? ` · ${product.category}` : ''}`
+        );
+      }
+    }
+
+    if (message.relatedProducts?.length) {
+      lines.push('', '**Optional add-ons you may need**');
+      for (const product of message.relatedProducts) {
+        lines.push(
+          `- **${product.name}** — ${this.formatPrice(product.price)}${product.category ? ` · ${product.category}` : ''}`
+        );
+      }
+    }
+
+    return lines.join("\\n");
+  }
+
+  private async writeToClipboard(value: string): Promise<boolean> {
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(value);
+        return true;
+      }
+
+      const textArea = document.createElement('textarea');
+      textArea.value = value;
+      textArea.style.position = 'fixed';
+      textArea.style.opacity = '0';
+      document.body.appendChild(textArea);
+      textArea.select();
+      const copied = document.execCommand('copy');
+      document.body.removeChild(textArea);
+      return copied;
+    } catch {
+      return false;
+    }
   }
 
   formatPrice(price: string): string {
