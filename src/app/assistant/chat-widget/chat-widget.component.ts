@@ -97,7 +97,7 @@ export class ChatWidgetComponent {
   private createAssistantMessage(response: string): Message {
     const products: ProductCard[] = (response || '')
       .split(/\r?\n/)
-      .map((line) => {
+      .map((line): ProductCard | null => {
         const match = line.match(
           /^\s*-\s*(.*?)\s*\|\s*Price:\s*(.*?)\s*(?:\|\s*Category:\s*(.*))?$/i
         );
