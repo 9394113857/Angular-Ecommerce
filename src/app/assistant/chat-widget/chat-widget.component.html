@@ -85,6 +85,29 @@
                 </span>
               </article>
             </div>
+
+            <section class="related-products" *ngIf="msg.relatedProducts?.length">
+              <button
+                class="related-toggle"
+                type="button"
+                (click)="toggleRelatedProducts(msg)"
+                [attr.aria-expanded]="!!msg.relatedExpanded">
+                <span>Optional add-ons you may need</span>
+                <span class="related-toggle-action">{{ msg.relatedExpanded ? 'Show less' : 'View picks' }}</span>
+              </button>
+
+              <div class="related-list" *ngIf="msg.relatedExpanded">
+                <article class="product-card related-card" *ngFor="let product of msg.relatedProducts">
+                  <div class="product-card-main">
+                    <h4>{{ product.name }}</h4>
+                    <span class="product-price">{{ formatPrice(product.price) }}</span>
+                  </div>
+                  <span class="product-category" *ngIf="product.category">
+                    {{ product.category }}
+                  </span>
+                </article>
+              </div>
+            </section>
           </ng-container>
         </div>
 
