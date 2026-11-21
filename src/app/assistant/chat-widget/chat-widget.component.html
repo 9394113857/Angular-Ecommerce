@@ -27,6 +27,15 @@
         <h2>Shopping Assistant</h2>
         <p><span class="online-indicator"></span> Online · Ready to help</p>
       </div>
+      <button
+        class="copy-chat-button"
+        type="button"
+        (click)="copyConversation()"
+        [disabled]="messages.length === 0"
+        aria-label="Copy entire conversation as Markdown">
+        <span aria-hidden="true">{{ chatCopied ? '✓' : '▣' }}</span>
+        {{ chatCopied ? 'Copied' : 'Copy chat' }}
+      </button>
     </div>
 
     <button
@@ -62,7 +71,7 @@
 
     <div
       class="message-row"
-      *ngFor="let msg of messages"
+      *ngFor="let msg of messages; let i = index"
       [ngClass]="msg.role === 'user' ? 'user-row' : 'assistant-row'">
 
       <div class="message-avatar" *ngIf="msg.role === 'assistant'" aria-hidden="true">✦</div>
@@ -111,7 +120,16 @@
           </ng-container>
         </div>
 
-        <time class="message-time">{{ msg.timestamp | date:'shortTime' }}</time>
+        <div class="message-meta">
+          <time class="message-time">{{ msg.timestamp | date:'shortTime' }}</time>
+          <button
+            class="copy-message-button"
+            type="button"
+            (click)="copyMessage(msg, i)"
+            [attr.aria-label]="'Copy ' + (msg.role === 'user' ? 'your message' : 'assistant response') + ' as Markdown'">
+            {{ copiedMessageIndex === i ? 'Copied ✓' : 'Copy' }}
+          </button>
+        </div>
       </div>
     </div>
 
