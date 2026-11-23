@@ -17,7 +17,7 @@ export class AssistantService {
   // ============================================
   // LOCAL BACKEND
   // ============================================
-  // private BASE_URL = 'http://127.0.0.1:5000/api/v1/assistant'; 
+  // private BASE_URL = 'http://127.0.0.1:5000/api/v1/assistant';
 
   // ============================================
   // PRODUCTION BACKEND
@@ -28,7 +28,9 @@ export class AssistantService {
 
   sendMessage(userId: number | null, message: string): Observable<ChatResponse> {
 
-    const token = localStorage.getItem('access_token');
+    // Guest users have no access token. Only attach Authorization
+    // when a real token is present; never send "Bearer null".
+    const token = localStorage.getItem('access_token')?.trim();
 
     const payload: any = {
       message: message
@@ -38,9 +40,11 @@ export class AssistantService {
       payload.user_id = userId;
     }
 
-    const headers = new HttpHeaders({
-      Authorization: `Bearer ${token}`
-    });
+    let headers = new HttpHeaders();
+
+    if (token && token !== 'null' && token !== 'undefined') {
+      headers = headers.set('Authorization', `Bearer ${token}`);
+    }
 
     return this.http.post<ChatResponse>(
       `${this.BASE_URL}/chat`,
