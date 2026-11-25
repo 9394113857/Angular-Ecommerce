@@ -1,0 +1,665 @@
+name: 🚀 Angular Ecommerce ||| Live Backend Keep Alive Controller
+
+on:
+  workflow_dispatch:
+    inputs:
+      duration_minutes:
+        description: "⏱️ How many minutes should all 6 backends stay active?"
+        required: true
+        type: number
+        default: 30
+
+permissions:
+  contents: read
+
+concurrency:
+  group: angular-ecommerce-live-backend-controller
+  cancel-in-progress: true
+
+jobs:
+  keep-alive:
+    name: 🌈 Live 6 Backend Keep-Alive Controller
+    runs-on: ubuntu-latest
+    timeout-minutes: 365
+
+    steps:
+      - name: 🚀 Start Live Backend Monitoring Dashboard
+        shell: bash
+        env:
+          DURATION_MINUTES: ${{ inputs.duration_minutes }}
+        run: |
+          set -uo pipefail
+
+          # ==========================================================
+          # 🌈 ANGULAR E-COMMERCE | LIVE BACKEND CONTROL CENTER
+          # ==========================================================
+
+          # ----------------------------------------------------------
+          # 🎨 ANSI COLOR CONFIGURATION
+          # ----------------------------------------------------------
+
+          RESET=$'\033[0m'
+          BOLD=$'\033[1m'
+          DIM=$'\033[2m'
+
+          RED=$'\033[91m'
+          ORANGE=$'\033[38;5;208m'
+          YELLOW=$'\033[93m'
+          GREEN=$'\033[92m'
+          LIME=$'\033[38;5;118m'
+          CYAN=$'\033[96m'
+          BLUE=$'\033[94m'
+          PURPLE=$'\033[95m'
+          MAGENTA=$'\033[38;5;201m'
+          WHITE=$'\033[97m'
+          GREY=$'\033[90m'
+
+          # ----------------------------------------------------------
+          # ⚙️ SESSION CONFIGURATION
+          # ----------------------------------------------------------
+
+          if ! [[ "$DURATION_MINUTES" =~ ^[0-9]+$ ]] ||
+             (( DURATION_MINUTES < 1 || DURATION_MINUTES > 360 )); then
+            echo "ERROR: Duration must be between 1 and 360 minutes."
+            exit 1
+          fi
+
+          INTERVAL=300
+          DURATION=$((DURATION_MINUTES * 60))
+
+          START=$(date +%s)
+          DEADLINE=$((START + DURATION))
+
+          ROUND=0
+          SUCCESS=0
+          FAILED=0
+
+          TOTAL_SERVICES=6
+
+          SERVICES=(
+            "AUTH"
+            "PRODUCT"
+            "CART / ORDER"
+            "ML EVENTS"
+            "ML RECOMMENDATIONS"
+            "ASSISTANT"
+          )
+
+          URLS=(
+            "https://backend-auth-service-ks6f.onrender.com"
+            "https://backend-product-service-ncl2.onrender.com"
+            "https://backend-cart-order-service-q6qh.onrender.com"
+            "https://backend-ml-events-service-ba9v.onrender.com"
+            "https://backend-ml-recommendation-service-huu6.onrender.com"
+            "https://assistant-service-g24j.onrender.com/"
+          )
+
+          STATUS=(
+            "WAITING"
+            "WAITING"
+            "WAITING"
+            "WAITING"
+            "WAITING"
+            "WAITING"
+          )
+
+          LAST_CHECK=(
+            "NOT CHECKED"
+            "NOT CHECKED"
+            "NOT CHECKED"
+            "NOT CHECKED"
+            "NOT CHECKED"
+            "NOT CHECKED"
+          )
+
+          HTTP_CODES=(
+            "---" "---" "---" "---" "---" "---"
+          )
+
+          RESULT_DIR=$(mktemp -d)
+
+          cleanup() {
+            rm -rf "$RESULT_DIR"
+          }
+
+          trap cleanup EXIT
+
+          # ----------------------------------------------------------
+          # 🌈 DYNAMIC COLOR ENGINE
+          #
+          # Session begins GREEN.
+          # Colors progressively change with elapsed time.
+          # Final five minutes become RED.
+          # ----------------------------------------------------------
+
+          get_dynamic_color() {
+
+            local NOW="$1"
+            local REMAINING=$((DEADLINE - NOW))
+            local ELAPSED=$((NOW - START))
+
+            local ALERT_WINDOW=300
+
+            # Short sessions still transition from green to red.
+            if (( DURATION <= 300 )); then
+              ALERT_WINDOW=$((DURATION / 5))
+              (( ALERT_WINDOW < 1 )) && ALERT_WINDOW=1
+            fi
+
+            if (( REMAINING <= ALERT_WINDOW )); then
+              printf '%s' "$RED"
+              return
+            fi
+
+            local LEVEL=$((ELAPSED * 7 / DURATION))
+
+            local COLORS=(
+              "$GREEN"
+              "$LIME"
+              "$CYAN"
+              "$BLUE"
+              "$PURPLE"
+              "$MAGENTA"
+              "$ORANGE"
+              "$RED"
+            )
+
+            (( LEVEL > 7 )) && LEVEL=7
+
+            printf '%s' "${COLORS[$LEVEL]}"
+          }
+
+          # ----------------------------------------------------------
+          # ⏱️ TIME FORMATTING
+          # ----------------------------------------------------------
+
+          format_time() {
+
+            local SECONDS_VALUE="$1"
+
+            if (( SECONDS_VALUE < 0 )); then
+              SECONDS_VALUE=0
+            fi
+
+            local HOURS=$((SECONDS_VALUE / 3600))
+            local MINUTES=$(((SECONDS_VALUE % 3600) / 60))
+            local SECONDS=$((SECONDS_VALUE % 60))
+
+            printf "%02d:%02d:%02d" \
+              "$HOURS" "$MINUTES" "$SECONDS"
+          }
+
+          current_ist() {
+            TZ=Asia/Kolkata date '+%d-%b-%Y %I:%M:%S %p IST'
+          }
+
+          # ----------------------------------------------------------
+          # 📊 MASTER DASHBOARD
+          # ----------------------------------------------------------
+
+          print_master_dashboard() {
+
+            local NOW
+            NOW=$(date +%s)
+
+            local REMAINING=$((DEADLINE - NOW))
+            (( REMAINING < 0 )) && REMAINING=0
+
+            local NEXT_LEFT=0
+
+            if (( ROUND > 0 )); then
+              NEXT_LEFT=$((NEXT_WAKEUP - NOW))
+              (( NEXT_LEFT < 0 )) && NEXT_LEFT=0
+            fi
+
+            local COLOR
+            COLOR=$(get_dynamic_color "$NOW")
+
+            local ONLINE=0
+            local DOWN=0
+
+            for i in "${!STATUS[@]}"; do
+              if [[ "${STATUS[$i]}" == "ONLINE" ]]; then
+                ONLINE=$((ONLINE + 1))
+              elif [[ "${STATUS[$i]}" == "FAILED" ]]; then
+                DOWN=$((DOWN + 1))
+              fi
+            done
+
+            local NEXT_TIME="WAITING FOR FIRST ROUND"
+
+            if (( ROUND > 0 )); then
+              NEXT_TIME=$(TZ=Asia/Kolkata date \
+                -d "@$NEXT_WAKEUP" '+%I:%M:%S %p IST')
+            fi
+
+            echo ""
+            echo -e "${COLOR}${BOLD}"
+            echo "╔══════════════════════════════════════════════════════════╗"
+            echo "║          🌈 ANGULAR E-COMMERCE CONTROL CENTER            ║"
+            echo "║                  LIVE MASTER DASHBOARD                  ║"
+            echo "╚══════════════════════════════════════════════════════════╝"
+            echo -e "${RESET}"
+
+            printf "${WHITE}%-25s${RESET} %s\n" \
+              "📅 CURRENT IST:" "$(current_ist)"
+
+            printf "${WHITE}%-25s${RESET} %s\n" \
+              "⏱️ TOTAL DURATION:" "$(format_time "$DURATION")"
+
+            printf "${COLOR}%-25s %s${RESET}\n" \
+              "⌛ SESSION REMAINING:" "$(format_time "$REMAINING")"
+
+            printf "${CYAN}%-25s %s${RESET}\n" \
+              "🔄 CURRENT ROUND:" "$ROUND"
+
+            printf "${GREEN}%-25s %s${RESET}\n" \
+              "🟢 ONLINE SERVICES:" "$ONLINE / $TOTAL_SERVICES"
+
+            printf "${RED}%-25s %s${RESET}\n" \
+              "🔴 FAILED SERVICES:" "$DOWN / $TOTAL_SERVICES"
+
+            printf "${GREEN}%-25s %s${RESET}\n" \
+              "✅ TOTAL SUCCESSFUL:" "$SUCCESS"
+
+            printf "${RED}%-25s %s${RESET}\n" \
+              "❌ TOTAL FAILED:" "$FAILED"
+
+            echo ""
+            echo -e "${COLOR}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+            echo -e "${BOLD}${WHITE}📊 MASTER SERVICE MONITORING TABLE${RESET}"
+            echo -e "${COLOR}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+
+            printf "%-5s | %-21s | %-12s | %-10s | %-12s\n" \
+              "S.NO" "BACKEND SERVICE" "STATUS" "HTTP CODE" "LAST CHECK"
+
+            echo "──────┼───────────────────────┼──────────────┼────────────┼──────────────"
+
+            for i in "${!SERVICES[@]}"; do
+
+              local SERVICE_COLOR="$GREY"
+
+              case "${STATUS[$i]}" in
+                ONLINE) SERVICE_COLOR="$GREEN" ;;
+                FAILED) SERVICE_COLOR="$RED" ;;
+                *) SERVICE_COLOR="$YELLOW" ;;
+              esac
+
+              printf "%-5s | %-21s | ${SERVICE_COLOR}%-12s${RESET} | %-10s | %-12s\n" \
+                "$((i + 1))" \
+                "${SERVICES[$i]}" \
+                "${STATUS[$i]}" \
+                "${HTTP_CODES[$i]}" \
+                "${LAST_CHECK[$i]}"
+            done
+
+            echo ""
+            echo -e "${COLOR}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+
+            printf "${CYAN}%-25s${RESET} %s\n" \
+              "🔔 NEXT WAKE-UP AT:" "$NEXT_TIME"
+
+            printf "${YELLOW}%-25s${RESET} %s\n" \
+              "⏳ NEXT WAKE-UP IN:" "$(format_time "$NEXT_LEFT")"
+
+            printf "${COLOR}%-25s %s${RESET}\n" \
+              "🌈 SESSION COLOR:" "DYNAMIC LIVE PROGRESSION"
+
+            echo -e "${COLOR}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+          }
+
+          # ----------------------------------------------------------
+          # 📋 SIX INDIVIDUAL BACKEND TABLES
+          # ----------------------------------------------------------
+
+          print_service_tables() {
+
+            local NOW
+            NOW=$(date +%s)
+
+            local REMAINING=$((DEADLINE - NOW))
+            (( REMAINING < 0 )) && REMAINING=0
+
+            local NEXT_TIME
+            NEXT_TIME=$(TZ=Asia/Kolkata date \
+              -d "@$NEXT_WAKEUP" '+%I:%M:%S %p IST')
+
+            local COLOR
+            COLOR=$(get_dynamic_color "$NOW")
+
+            echo ""
+            echo -e "${BOLD}${WHITE}"
+            echo "╔══════════════════════════════════════════════════════════╗"
+            echo "║              📡 SIX BACKEND LIVE MONITORS               ║"
+            echo "╚══════════════════════════════════════════════════════════╝"
+            echo -e "${RESET}"
+
+            for i in "${!SERVICES[@]}"; do
+
+              local SERVICE_COLOR="$GREY"
+
+              case "${STATUS[$i]}" in
+                ONLINE) SERVICE_COLOR="$GREEN" ;;
+                FAILED) SERVICE_COLOR="$RED" ;;
+                *) SERVICE_COLOR="$YELLOW" ;;
+              esac
+
+              echo ""
+              echo -e "${COLOR}┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓${RESET}"
+
+              printf "${COLOR}${BOLD}┃ 📊 BACKEND TABLE %s | %-38s ┃${RESET}\n" \
+                "$((i + 1))" "${SERVICES[$i]}"
+
+              echo -e "${COLOR}┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫${RESET}"
+
+              printf "┃ %-22s : ${SERVICE_COLOR}%-31s${RESET} ┃\n" \
+                "SERVICE STATUS" "${STATUS[$i]}"
+
+              printf "┃ %-22s : %-31s ┃\n" \
+                "HTTP RESPONSE" "${HTTP_CODES[$i]}"
+
+              printf "┃ %-22s : %-31s ┃\n" \
+                "LAST CHECK (IST)" "${LAST_CHECK[$i]}"
+
+              printf "┃ %-22s : %-31s ┃\n" \
+                "NEXT WAKE-UP" "$NEXT_TIME"
+
+              printf "┃ %-22s : ${COLOR}%-31s${RESET} ┃\n" \
+                "SESSION REMAINING" "$(format_time "$REMAINING")"
+
+              echo -e "${COLOR}┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛${RESET}"
+
+            done
+
+            echo ""
+            echo -e "${GREEN}${BOLD}✅ ALL SIX BACKEND MONITORS UPDATED.${RESET}"
+          }
+
+          # ==========================================================
+          # 🚀 SESSION START
+          # ==========================================================
+
+          echo ""
+          echo -e "${GREEN}${BOLD}"
+          echo "╔══════════════════════════════════════════════════════════╗"
+          echo "║       🚀 ANGULAR E-COMMERCE LIVE BACKEND CONTROLLER     ║"
+          echo "║                  SESSION INITIALIZED                    ║"
+          echo "╚══════════════════════════════════════════════════════════╝"
+          echo -e "${RESET}"
+
+          echo "👤 ACTIVATED BY: ${{ github.actor }}"
+          echo "🆔 RUN ID: ${{ github.run_id }}"
+          echo "⏱️ SESSION DURATION: $DURATION_MINUTES MINUTES"
+          echo "🔄 WAKE-UP INTERVAL: EVERY 5 MINUTES"
+          echo "📡 TOTAL BACKENDS: 6"
+          echo "🌍 TIMEZONE: ASIA/KOLKATA"
+          echo "🛑 AUTOMATIC SHUTDOWN: ENABLED"
+          echo "❎ MANUAL CANCELLATION: ENABLED"
+
+          echo ""
+          echo "🟢 STARTED AT IST:"
+          current_ist
+
+          echo ""
+          echo -e "${GREEN}🌈 LIVE MONITORING SESSION STARTED!${RESET}"
+
+          NEXT_WAKEUP=$START
+
+          # ==========================================================
+          # 🔄 MAIN KEEP-ALIVE CONTROL LOOP
+          # ==========================================================
+
+          while true; do
+
+            NOW=$(date +%s)
+            REMAINING=$((DEADLINE - NOW))
+
+            if (( REMAINING <= 0 )); then
+              break
+            fi
+
+            ROUND=$((ROUND + 1))
+
+            echo ""
+            echo -e "${CYAN}${BOLD}"
+            echo "╔══════════════════════════════════════════════════════════╗"
+            printf "║              🚀 BACKEND WAKE-UP ROUND %-3s               ║\n" "$ROUND"
+            echo "╚══════════════════════════════════════════════════════════╝"
+            echo -e "${RESET}"
+
+            echo "🕒 ROUND STARTED: $(current_ist)"
+            echo "📡 STARTING ALL SIX BACKENDS SIMULTANEOUSLY..."
+
+            # --------------------------------------------------------
+            # 🚀 LAUNCH SIX PARALLEL BACKEND REQUESTS
+            # --------------------------------------------------------
+
+            PIDS=()
+
+            for i in "${!URLS[@]}"; do
+
+              NOW=$(date +%s)
+              REMAINING=$((DEADLINE - NOW))
+
+              if (( REMAINING <= 0 )); then
+                STATUS[$i]="NOT STARTED"
+                continue
+              fi
+
+              CURL_TIMEOUT=240
+
+              if (( REMAINING < CURL_TIMEOUT )); then
+                CURL_TIMEOUT=$REMAINING
+              fi
+
+              echo -e "${CYAN}🚀 STARTING ${SERVICES[$i]}...${RESET}"
+
+              (
+                if HTTP_CODE=$(curl \
+                  --fail \
+                  --silent \
+                  --show-error \
+                  --location \
+                  --max-time "$CURL_TIMEOUT" \
+                  --output /dev/null \
+                  --write-out '%{http_code}' \
+                  "${URLS[$i]}" \
+                  2>"$RESULT_DIR/$i.err"); then
+
+                  printf 'ONLINE|%s\n' "$HTTP_CODE" > "$RESULT_DIR/$i.result"
+
+                else
+
+                  printf 'FAILED|%s\n' "${HTTP_CODE:-000}" > "$RESULT_DIR/$i.result"
+
+                fi
+
+              ) &
+
+              PIDS[$i]=$!
+
+            done
+
+            # --------------------------------------------------------
+            # ⏳ COLLECT ALL SIX RESPONSES
+            # --------------------------------------------------------
+
+            for i in "${!PIDS[@]}"; do
+
+              if [[ -z "${PIDS[$i]:-}" ]]; then
+                continue
+              fi
+
+              if wait "${PIDS[$i]}"; then
+                :
+              fi
+
+              if [[ -f "$RESULT_DIR/$i.result" ]]; then
+
+                IFS='|' read -r RESULT_STATUS RESULT_CODE \
+                  < "$RESULT_DIR/$i.result"
+
+                STATUS[$i]="$RESULT_STATUS"
+                HTTP_CODES[$i]="$RESULT_CODE"
+
+                if [[ "$RESULT_STATUS" == "ONLINE" ]]; then
+
+                  SUCCESS=$((SUCCESS + 1))
+
+                  echo -e "${GREEN}✅ ${SERVICES[$i]}: ONLINE | HTTP $RESULT_CODE${RESET}"
+
+                else
+
+                  FAILED=$((FAILED + 1))
+
+                  echo -e "${RED}❌ ${SERVICES[$i]}: FAILED | HTTP $RESULT_CODE${RESET}"
+
+                  if [[ -s "$RESULT_DIR/$i.err" ]]; then
+                    sed 's/^/   ⚠️ /' "$RESULT_DIR/$i.err"
+                  fi
+
+                fi
+
+              else
+
+                STATUS[$i]="FAILED"
+                HTTP_CODES[$i]="000"
+                FAILED=$((FAILED + 1))
+
+                echo -e "${RED}❌ ${SERVICES[$i]}: NO RESPONSE${RESET}"
+
+              fi
+
+              LAST_CHECK[$i]=$(TZ=Asia/Kolkata date '+%H:%M:%S')
+
+            done
+
+            # --------------------------------------------------------
+            # ⏱️ SCHEDULE NEXT FIVE-MINUTE WAKE-UP
+            # --------------------------------------------------------
+
+            ROUND_FINISHED=$(date +%s)
+
+            NEXT_WAKEUP=$((ROUND_FINISHED + INTERVAL))
+
+            if (( NEXT_WAKEUP > DEADLINE )); then
+              NEXT_WAKEUP=$DEADLINE
+            fi
+
+            echo ""
+            echo -e "${GREEN}${BOLD}✅ ROUND $ROUND COMPLETED${RESET}"
+
+            # --------------------------------------------------------
+            # 📊 DISPLAY ALL SIX INDIVIDUAL TABLES
+            # --------------------------------------------------------
+
+            print_service_tables
+
+            # --------------------------------------------------------
+            # 🏆 DISPLAY MASTER DASHBOARD
+            # --------------------------------------------------------
+
+            print_master_dashboard
+
+            # ========================================================
+            # ⏳ LIVE COUNTDOWN ENGINE
+            #
+            # Refreshes dashboard every 30 seconds.
+            # Does NOT send additional backend requests.
+            # ========================================================
+
+            echo ""
+            echo -e "${CYAN}${BOLD}⏳ LIVE SESSION COUNTDOWN ACTIVATED${RESET}"
+
+            while true; do
+
+              NOW=$(date +%s)
+
+              SESSION_LEFT=$((DEADLINE - NOW))
+              NEXT_LEFT=$((NEXT_WAKEUP - NOW))
+
+              if (( SESSION_LEFT <= 0 )); then
+                break 2
+              fi
+
+              if (( NEXT_LEFT <= 0 )); then
+                break
+              fi
+
+              # Wait only until the next dashboard refresh,
+              # next wake-up or session deadline.
+
+              WAIT_TIME=30
+
+              if (( SESSION_LEFT < WAIT_TIME )); then
+                WAIT_TIME=$SESSION_LEFT
+              fi
+
+              if (( NEXT_LEFT < WAIT_TIME )); then
+                WAIT_TIME=$NEXT_LEFT
+              fi
+
+              echo ""
+              echo -e "$(get_dynamic_color "$NOW")━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+
+              printf "${WHITE}⏱️ SESSION REMAINING: ${RESET}${BOLD}%s${RESET}\n" \
+                "$(format_time "$SESSION_LEFT")"
+
+              printf "${CYAN}🔄 NEXT WAKE-UP IN: ${RESET}%s\n" \
+                "$(format_time "$NEXT_LEFT")"
+
+              printf "${CYAN}📅 NEXT WAKE-UP AT: ${RESET}%s\n" \
+                "$(TZ=Asia/Kolkata date -d "@$NEXT_WAKEUP" '+%I:%M:%S %p IST')"
+
+              printf "${GREEN}🕒 CURRENT TIME: ${RESET}%s\n" \
+                "$(current_ist)"
+
+              # Update the full master dashboard every 30 seconds.
+              print_master_dashboard
+
+              sleep "$WAIT_TIME"
+
+            done
+
+          done
+
+          # ==========================================================
+          # 🛑 AUTOMATIC SESSION SHUTDOWN
+          # ==========================================================
+
+          echo ""
+          echo -e "${RED}${BOLD}"
+          echo "╔══════════════════════════════════════════════════════════╗"
+          echo "║              🛑 AUTOMATIC SESSION SHUTDOWN              ║"
+          echo "╚══════════════════════════════════════════════════════════╝"
+          echo -e "${RESET}"
+
+          echo "🔴 SESSION STATUS: STOPPED"
+          echo "⏱️ SHUTDOWN REASON: CONFIGURED TIME LIMIT REACHED"
+
+          echo ""
+          echo -e "${RED}📊 FINAL BACKEND STATUS REPORT${RESET}"
+
+          print_service_tables
+
+          print_master_dashboard
+
+          echo ""
+          echo -e "${RED}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+
+          echo "📊 TOTAL WAKE-UP ROUNDS: $ROUND"
+          echo "📡 TOTAL BACKENDS: $TOTAL_SERVICES"
+          echo "✅ SUCCESSFUL REQUESTS: $SUCCESS"
+          echo "❌ FAILED REQUESTS: $FAILED"
+
+          echo ""
+          echo "🕒 FINISHED AT IST:"
+          current_ist
+
+          echo ""
+          echo -e "${GREEN}${BOLD}"
+          echo "✅ ALL KEEP-ALIVE OPERATIONS HAVE ENDED."
+          echo "🛑 NO MORE AUTOMATIC REQUESTS WILL BE SENT."
+          echo "🌈 SESSION COMPLETED SUCCESSFULLY."
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo -e "${RESET}"
