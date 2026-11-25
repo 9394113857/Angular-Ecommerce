@@ -1,4 +1,4 @@
-name: 🚀 Angular Ecommerce ||| Live Backend Keep Alive Controller
+name: 🔁 Angular Ecommerce ||| Live Backend Keep Alive Controller
 
 on:
   workflow_dispatch:
