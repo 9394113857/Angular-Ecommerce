@@ -56,14 +56,7 @@ export class ChatWidgetComponent {
     this.inputMessage = '';
     this.loading = true;
 
-    let userId: number | null = null;
-    const userLoggedIn = localStorage.getItem('userLoggedIn');
-
-    if (userLoggedIn) {
-      userId = 1; // Preserve the existing demo user mapping.
-    }
-
-    this.assistantService.sendMessage(userId, message).subscribe({
+    this.assistantService.sendMessage(message).subscribe({
       next: (response) => {
         this.messages.push(this.createAssistantMessage(response.response));
         this.loading = false;
@@ -181,6 +174,7 @@ export class ChatWidgetComponent {
       maximumFractionDigits: Number.isInteger(amount) ? 0 : 2
     }).format(amount);
   }
+
   private parseProducts(response: string): ProductCard[] {
     return (response || '')
       .split(/\r?\n/)
